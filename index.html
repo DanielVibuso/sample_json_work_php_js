@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste</title>
+</head>
+<body>
+<div style="width: 30%">
+    <button id="record" style="margin: 10px">Gravar</button>
+    <button id="read">Ler</button><br>
+    <form id="formNome">
+        <label>Nome</label> 
+        <input type="text" name="nome"> 
+        <button type="submit">Incluir</button>
+    </form>
+    <section id="tables">
+    </section>
+    <section >
+        <textarea id="jsonTextArea" rows="10" cols="33">
+
+        </textarea>
+    </section>
+</div>
+</body>
+</html>
+
+<style>
+    .pessoa{
+        background-color: #A0A0A0;
+    }
+
+    .filho{
+        background-color: #C0C0C0;
+    }
+
+    caption{
+        background-color: #808080;
+    }
+</style>
+
+<script>
+
+    let myJson = {
+            "pessoas": []
+    }
+  
+    let includePeople = function(nome){
+            includeJsonPerson(nome)
+            includeTablePerson(nome)
+            jsonTextArea.value = JSON.stringify(myJson, null , 2 );
+    }
+
+    let includeJsonPerson = function(nome){
+        myJson.pessoas.push({
+            "nome" : nome, 
+            "filhos": []
+        })
+    }
+
+    let includeJsonSon = function(pessoa, filho){
+        let index = myJson.pessoas.findIndex( p => p.nome == pessoa)
+        myJson.pessoas[index].filhos.push(filho)
+    }
+
+    let removeJsonSon = function(pessoa, filho){
+        let indexPessoa = myJson.pessoas.findIndex( p => p.nome == pessoa)
+        let indexFilho = myJson.pessoas[indexPessoa]['filhos'].indexOf(filho)
+        myJson.pessoas[indexPessoa]['filhos'].splice(indexFilho, 1)
+    }
+
+    let removeJsonPerson = function(pessoa){
+        let indexPessoa = myJson.pessoas.findIndex( p => p.nome == pessoa)
+        myJson.pessoas.splice(indexPessoa, 1)
+    }
+
+    let includeTablePerson = function(nome){
+        let pessoaDiv = document.createElement("div")
+        let pessoaTable = document.createElement("table")
+        let tr = document.createElement("tr")
+        let tdName = document.createElement("td")
+        let tdRemove = document.createElement("td")
+        let buttonRemover = document.createElement("button")
+        let buttonAdicionarFilho = document.createElement("button")
+
+        /* Escolhi trabalhar com id em cada tabela de Pessoa, e para evitar nomes iguais conflitando os id's em caso de nomes iguais adicionei um número randômico*/
+        let dinamic_id = nome + (Math.floor(Math.random() * (100 - 1 + 1)) + 1).toString()
+        pessoaDiv.id = "div_" + dinamic_id
+        pessoaTable.id = dinamic_id
+        tr.classList.add("pessoa")
+        tdName.textContent = nome
+        buttonRemover.textContent = "remover"
+        buttonRemover.dataset.tabelaPessoa = pessoaTable.id
+        buttonRemover.dataset.nomePessoa = nome
+        buttonRemover.addEventListener("click", removePessoa)
+        buttonAdicionarFilho.textContent = "Adicionar filho"
+        buttonAdicionarFilho.dataset.tabelaPai = pessoaTable.id
+        buttonAdicionarFilho.dataset.nomePai = nome
+        buttonAdicionarFilho.addEventListener("click", includeTrSon)
+
+        tdRemove.appendChild(buttonRemover)
+        tr.appendChild(tdName)
+        tr.appendChild(tdRemove)
+        pessoaTable.appendChild(tr)
+        pessoaDiv.appendChild(pessoaTable)
+        pessoaDiv.appendChild(buttonAdicionarFilho)
+        sectionTables.appendChild(pessoaDiv)
+    }
+
+    let includeTrSon = function(){
+        let nomeFilho = prompt("Informe o nome", "nome do filho");
+        let nomePai = this.dataset.nomePai
+
+        includeJsonSon(nomePai, nomeFilho)
+
+        let tr = document.createElement("tr")
+        let tdName = document.createElement("td")
+        let tdRemove = document.createElement("td")
+        let buttonRemover = document.createElement("button")
+
+        tr.classList.add("filho")
+        tr.id = nomeFilho + (Math.floor(Math.random() * (100 - 1 + 1)) + 1).toString()
+        tdName.textContent = nomeFilho
+        buttonRemover.textContent = "remover filho"
+        buttonRemover.dataset.nomePai = nomePai
+        buttonRemover.dataset.nomeFilho = nomeFilho
+        buttonRemover.dataset.tabelaPai = this.dataset.tabelaPai
+        buttonRemover.dataset.trFilho = tr.id
+        buttonRemover.addEventListener("click", removeFilho)
+
+        tdRemove.appendChild(buttonRemover)
+        tr.appendChild(tdName)
+        tr.appendChild(tdRemove)
+
+        document.querySelector("#" + this.dataset.tabelaPai).appendChild(tr)
+        jsonTextArea.value = JSON.stringify(myJson, null , 2 );
+    }
+
+    let removeFilho = function(){
+        let table = document.querySelector("#" + this.dataset.tabelaPai)
+        let tr = table.querySelector("#" + this.dataset.trFilho )
+        table.removeChild(tr)
+        removeJsonSon(this.dataset.nomePai, this.dataset.nomeFilho)
+        jsonTextArea.value = JSON.stringify(myJson, null , 2 );
+    }
+
+    let removePessoa = function(){
+        let divPessoa = document.querySelector("#div_" + this.dataset.tabelaPessoa)
+        document.querySelector("#tables").removeChild(divPessoa)
+        removeJsonPerson(this.dataset.nomePessoa)
+        jsonTextArea.value = JSON.stringify(myJson, null , 2 );
+    }
+
+    let gravaDados = function(){
+        fetch(`http://localhost/turim/Bd.php`, {
+            method: 'POST',
+            body: JSON.stringify(myJson),
+            mode: 'no-cors',
+            headers: {
+                'content-type': 'application/json'
+            }
+        })
+        .then(function (data) { 
+            console.log(data)
+        })
+        .then(function (novoTweet) { 
+            console.log(novoTweet)
+        })
+    }
+
+    let jsonTextArea = document.querySelector("#jsonTextArea")
+    let sectionTables = document.querySelector("#tables")
+    let btnGravar = document.querySelector("#record")
+
+    document.querySelector("#formNome").addEventListener("submit", function(e){
+        e.preventDefault()
+        includePeople(this.nome.value)
+        this.nome.value = ''
+    })
+
+    btnGravar.addEventListener("click", gravaDados)
+
+    document.querySelector("#jsonTextArea").value = JSON.stringify(myJson, null , 2 );
+    
+
+</script>
